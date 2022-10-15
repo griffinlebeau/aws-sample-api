@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from 'react';
 
 const ThoughtForm = () => {
   const [formState, setFormState] = useState({
@@ -6,6 +6,7 @@ const ThoughtForm = () => {
     thought: "",
   });
   const [characterCount, setCharacterCount] = useState(0);
+  const fileInput = useRef(null);
 
   // update state based on form input changes
   const handleChange = (event) => {
@@ -15,9 +16,46 @@ const ThoughtForm = () => {
     }
   };
 
+  const handleImageUpload = (event) => {
+    event.preventDefault();
+    const data = new FormData();
+    data.append('image', fileInput.current.files[0]);
+    // send image file to endpoint with the postImage function
+    const postImage = async () => {
+      try {
+        const res = await fetch('/api/image-upload', {
+          mode: 'cors',
+          method: 'POST',
+          body: data,
+        });
+        if (!res.ok) throw new Error(res.statusText);
+        const postResponse = await res.json();
+        setFormState({ ...formState, image: postResponse.Location });
+    
+        return postResponse.Location;
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    postImage();
+  };
+
   // submit form
   const handleFormSubmit = (event) => {
     event.preventDefault();
+    const postData = async () => {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formState),
+      });
+      const data = await res.json();
+      console.log(data);
+    };
+    postData();
 
     // clear form value
     setFormState({ username: "", thought: "" });
@@ -29,6 +67,31 @@ const ThoughtForm = () => {
       <p className={`m-0 ${characterCount === 280 ? "text-error" : ""}`}>
         Character Count: {characterCount}/280
       </p>
+      <div key={thought.createdAt} className="card mb-3">
+  <p className="card-header">
+    <Link
+      to={`/profile/${thought.username}`}
+      style={{ fontWeight: 700 }}
+      className="text-light"
+    >
+      {thought.username}'s thought on{' '}
+      {new Date(parseInt(thought.createdAt)).toString()}
+    </Link>{' '}
+  </p>
+
+  {/* add thought text */}
+  {thought.thought && <p className="px-2 mt-2">{thought.thought}</p>}
+  {/* add thought image */}
+  {thought.image && (
+    <p className="px-2">
+      <img
+        className="mt-3 ml-4 thought-image"
+        src={thought.image}
+        alt="S3 bucket response"
+      />
+    </p>
+  )}
+</div>
       <form
         className="flex-row justify-center justify-space-between-md align-stretch"
         onSubmit={handleFormSubmit}
@@ -47,6 +110,13 @@ const ThoughtForm = () => {
           className="form-input col-12 "
           onChange={handleChange}
         ></textarea>
+        <label className="form-input col-12  p-1">
+          Add an image to your thought:
+          <input type="file" ref="{fileInput}" className="form-input p-2" />
+          <button className="btn" onClick="{handleImageUpload}" type="submit">
+            Upload
+          </button>
+        </label>
         <button className="btn col-12 " type="submit">
           Submit
         </button>
